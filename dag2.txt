@@ -1,0 +1,45 @@
+from airflow import DAG
+from airflow.operators.http_operator import SimpleHttpOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash_operator import BashOperator
+from datetime import datetime
+
+# Define your default_args and DAG object
+default_args = {
+    'owner': 'airflow',
+    'start_date': datetime(2023, 10, 5),
+    'retries': 1,
+}
+
+dag = DAG('mattillion_api_dag', default_args=default_args, schedule_interval=None)
+
+# Define your HTTP request operator to call the Mattillion API
+mattillion_api_call = SimpleHttpOperator(
+    task_id='call_mattillion_api',
+    http_conn_id='mattillion_api_conn',  # Connection ID with API endpoint information
+    endpoint='/your-api-endpoint',  # The endpoint you want to call
+    method='POST',  # HTTP method (e.g., POST, GET, PUT)
+    headers={"Content-Type": "application/json"},
+    data='{"key": "value"}',  # JSON payload or data for the API request
+    xcom_push=True,  # Push response data to XCom so that it can be used in the next task
+    dag=dag,
+)
+
+# Define a PythonOperator or BashOperator to run the job
+def run_mattillion_job(**kwargs):
+    ti = kwargs['ti']
+    response = ti.xcom_pull(task_ids='call_mattillion_api')
+    # Use the response data to determine the job parameters or setup
+    # Call your Mattillion job here, you may use a BashOperator for this
+    # Example: You can use a BashOperator to run a script that triggers the job
+    # e.g., '/path/to/your/mattillion_job.sh'
+
+run_job = PythonOperator(
+    task_id='run_mattillion_job',
+    provide_context=True,
+    python_callable=run_mattillion_job,
+    dag=dag,
+)
+
+# Set up task dependencies
+mattillion_api_call >> run_job

@@ -1,0 +1,38 @@
+import os
+from airflow import DAG
+from airflow.operators.dummy import DummyOperator
+from airflow.operators.bash import BashOperator
+from airflow.providers.amazon.aws.operators.sqs import SqsPublishOperator
+from common.util import configuration, alerting
+
+dag_id =  os.path.basename(__file__).replace(".py", "")
+config = configuration.get_config(f'{dag_id}.yml')
+
+# SQS queue to publish to in AWS
+sqs_queue_name = 'run-etl-jobs'
+
+args = {
+          "ENVIRONMENT":  "dev",
+          "account_name": "mydevaccount",
+          "group": "Matillion_ETL_DEV",
+          "project": "General"
+          }
+
+with DAG(dag_id=dag_id, **config['airflow'],
+        on_failure_callback = opsgenie_alert.create_alert) as dag:
+        start_task = DummyOperator(task_id='start')
+        end_task = DummyOperator(task_id='end')
+
+    publish_to_queue = SqsPublishOperator(
+    task_id="publish_to_queue",
+    sqs_queue=sqs_queue_name,
+    message_content={
+        "group":       args['group'],
+        "project":     args['project'],
+        "version":     "default",
+        "environment": args['account_name'],
+        "job":         "Matillion ETL Job",
+        }
+    )
+
+    start_task >> publish_to_queue >> end_task
