@@ -1,0 +1,32 @@
+#pip install apache-airflow-providers-amazon
+
+from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.providers.amazon.aws.transfers.aws_glue import AwsGlueJobOperator
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2023, 1, 1),
+    'email': ['airflow@example.com'],
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+dag = DAG('aws_glue_job_example', 
+          default_args=default_args,
+          schedule_interval='@once')
+
+glue_job_operator = AwsGlueJobOperator(
+    task_id='glue_job_operator_task',
+    job_name='YourGlueJobName', # Replace with your Glue Job Name
+    script_location='s3://your-bucket-name/path/to/your/script.py', # Replace with your S3 script location
+    # Other optional parameters can be added here
+    dag=dag,
+)
+
+glue_job_operator
+
+
