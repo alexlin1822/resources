@@ -1,0 +1,12 @@
+post {
+  success {
+    script {
+      sh "npm run my-happy-script"
+    }
+  }
+  failure {
+    script {
+      sh "npm run my-sad-script"
+    }
+  }
+}
